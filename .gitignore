@@ -1,0 +1,19 @@
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+#Compilation output
+dedispersion-cpu
+
+#directories
+/output
+
+# Other
+*.swp
+*~
+*.sav
+*.old
+*.new
+*.ori
+
