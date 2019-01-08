@@ -11,7 +11,7 @@
 
 #define MAX 255
 
-void fake_signal(unsigned short **signal, const float selected_dm, const float fch1, const int channels, const float total_bandwidth, const float time_sampling)
+void fake_signal(unsigned short **signal, unsigned long int *nsamples, const float *shifts, const float selected_dm, const float fch1, const int channels, const float total_bandwidth, const float time_sampling)
 {
 	int maximum_width = 10;
 	//time measurement
@@ -45,16 +45,9 @@ void fake_signal(unsigned short **signal, const float selected_dm, const float f
         printf("\tSignal length:  \t%*d\n",maximum_width,signal_length_time);
         printf("\t**********************************\n\n");
 
-
-	// Obtain the channel shifts for concrete channel bandwidth ('chan_ban') and high frequency ('fch1') for #number of channels ('channels')
-	// note: the channel bandwidth need to be negative (going from high to low frequencies)
-	float *shifts;
-	shifts = (float*) malloc(channels*sizeof(float));	
-	get_shifts(shifts, fch1, chan_ban, channels);
-
 	// Getting the position of the max peak for the selected type of signal and the normalized scale factor
 	float *func_scale;
-	int func_length = 100;
+	int func_length = 10; //note: the lenght must be less then sampling rate
 	int max_pos = 0;
 	func_scale = (float *)malloc(func_length*sizeof(float));
 	inverse_gaussian(func_scale,func_length, 0.5, &max_pos);
@@ -73,7 +66,9 @@ void fake_signal(unsigned short **signal, const float selected_dm, const float f
 		printf("\tNote: Signal needs to be at least of length: %d samples. Increasing...\n", signal_time_position + shifts_index[channels-1]);
                 signal_length = signal_length_time*sampling_rate + signal_time_position + shifts_index[channels-1];
         }
+	signal_length = signal_length/TR_BLOCK*TR_BLOCK; // the transpose kernel needs signal to be multiple of the tr_block
 	size_t signal_size = signal_length*channels;
+	*nsamples = signal_length;
 	*signal = (unsigned short *) malloc(signal_size*sizeof(unsigned short));
 	
 	printf("\tGenerating fake signal with %d samples (%lf s) ...", signal_length,(float)signal_length/sampling_rate);
@@ -86,10 +81,10 @@ void fake_signal(unsigned short **signal, const float selected_dm, const float f
 		}	
 	}
 	time_end = omp_get_wtime() - time_start;
-	printf("\n\t\tdone in %lf seconds.\n",time_end);
+	printf("\n\t\tdone in %lf seconds.\n\n",time_end);
 
 	//clean-up
-	free(shifts);
+//	free(shifts);
 	free(func_scale);
 	free(shifts_index);
 }
