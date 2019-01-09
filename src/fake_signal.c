@@ -47,7 +47,7 @@ void fake_signal(unsigned short **signal, unsigned long int *nsamples, const flo
 
 	// Getting the position of the max peak for the selected type of signal and the normalized scale factor
 	float *func_scale;
-	int func_length = 10; //note: the lenght must be less then sampling rate
+	int func_length = 100; //note: the lenght must be less then sampling rate
 	int max_pos = 0;
 	func_scale = (float *)malloc(func_length*sizeof(float));
 	inverse_gaussian(func_scale,func_length, 0.5, &max_pos);

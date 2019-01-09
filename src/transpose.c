@@ -33,11 +33,11 @@ void transpose(unsigned short **output, unsigned short *input, const int channel
 	unsigned long rows_round = floor((float)channels/TR_BLOCK)*TR_BLOCK;
         unsigned long columns_round = floor((float)nsamples/TR_BLOCK)*TR_BLOCK;
 
-	printf("\n\tTransposition for a block size: %d ...", TR_BLOCK);
+	printf("\n\tTransposition for a block size: %d ...\n", TR_BLOCK);
 	time_start = omp_get_wtime();
                 transpose_block(input,output,nsamples,channels,rows_round,columns_round);
         time_end = omp_get_wtime() - time_start;
 	float thr = 2*output_size*sizeof(unsigned short)/1024.0/1024.0/1024.0/time_end;
-	printf("\n\t\tdone in: %lf. Bandwidth: %lf GB/s.\n", time_end, thr);
+	printf("\t\tdone in: %lf. Bandwidth: %lf GB/s.\n", time_end, thr);
 
 }
