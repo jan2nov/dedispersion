@@ -12,11 +12,17 @@
 
 int main(int argc, char *argv[])
 {
+
+	if( argc < 9){
+		printf("ERROR: Need more arguments, please see the README.md\n\n");
+		exit(100);
+	}
+
 	
 	double time_start, time_end;
 	int maximum_width = 10;
 	unsigned short *signal;
-	float selected_dm = 90;
+	float selected_dm = atof(argv[5]);
 	float fch1 = atof(argv[1]);
 	int channels = atoi(argv[2]);
 		if (channels < DIVINCHAN) {
@@ -39,10 +45,13 @@ int main(int argc, char *argv[])
 	fake_signal(&signal, &total_nsamples, shifts, selected_dm, fch1, channels, total_bandwidth, time_sampling);
 	fflush(stdout);
 
+	//write signal to disk
+//	signal_raw_data(signal, total_nsamples, channels);
+
 	// searching plan basic setup
-	int ndms = atoi(argv[5]);;
-	float dm_step = atof(argv[6]);
-	float dm_start = atof(argv[7]);
+	int ndms = atoi(argv[6]);;
+	float dm_step = atof(argv[7]);
+	float dm_start = atof(argv[8]);
 	int maxshift = 0;
 	int max_high;
 	
@@ -81,22 +90,30 @@ int main(int argc, char *argv[])
 
 	// tranpose the signal
 	unsigned short *transposed_signal;
-
-	transpose(&transposed_signal, signal, channels, total_nsamples);	
+	
+	double time_trans = 0;
+	transpose(&transposed_signal, &time_trans, signal, channels, total_nsamples);	
 	fflush(stdout);
 
-	dedispersion_cpu(transposed_signal, dedispersed_signal, sampling_rate, channels, reduced_nsamples, ndms, shifts, dm_step, total_nsamples, dm_start);
+	//write transposed signal to disk; just for debugging
+//	signal_raw_data(signal, total_nsamples, channels);
 
 	// Launching de-dispersion kernel
-	printf("\n\tLaunching dedispersion for range: %d ...\n", 0);
-	time_start = omp_get_wtime();
-		dedispersion_cpu(transposed_signal, dedispersed_signal, sampling_rate, channels, reduced_nsamples, ndms, shifts, dm_step, total_nsamples, dm_start);
-	time_end = omp_get_wtime() - time_start;
-	printf("\t\tdone in: %lf s. Fraction of real-time: %lf\n\n", time_end, reduced_nsamples/(sampling_rate*time_end));
+	double time_dedisp = 0;
+	printf("\tLaunching %dx dedispersion for range: %d ...\n", RUNS,0);
+	for (int i = 0; i < RUNS; i++){
+		time_start = omp_get_wtime();
+			dedispersion_cpu(transposed_signal, dedispersed_signal, sampling_rate, channels, reduced_nsamples, ndms, shifts, dm_step, total_nsamples, dm_start);
+		time_end = omp_get_wtime() - time_start;
+		time_dedisp += time_end;
+		printf("\t\t\t#%d: %lf seconds\n", i, time_end);
+	}
+	time_dedisp = time_dedisp/RUNS;
+	printf("\t\tdone in average: %lf s. Fraction of real-time: %lf\n\n", time_dedisp, reduced_nsamples/(sampling_rate*time_dedisp));
 	fflush(stdout);
 
 	//uncomment to raw write data
-	//write_raw_data(dedispersed_signal, ndms, reduced_nsamples, dm_step, dm_start);
+	write_raw_data(dedispersed_signal, ndms, reduced_nsamples, dm_step, dm_start);
 	fflush(stdout);
 
 	// end of the code

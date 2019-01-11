@@ -41,7 +41,7 @@ void fake_signal(unsigned short **signal, unsigned long int *nsamples, const flo
 
 	// Getting the position of the max peak for the selected type of signal and the normalized scale factor
 	float *func_scale;
-	int func_length = 10; //sampling_rate/100.0 + 1; //note: the lenght must be less then sampling rate; now set to at least 1% of the sampling rate
+	int func_length = sampling_rate/100.0 + 1; //note: the lenght must be less then sampling rate; now set to at least 1% of the sampling rate
 	printf("\tSignal width:   \t%*d\n",maximum_width, func_length);
         printf("\t**********************************\n\n");
 	int max_pos = 0;

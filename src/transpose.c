@@ -23,23 +23,21 @@ void transpose_block(const unsigned short *A, unsigned short **B, const unsigned
     }
 }
 
-void transpose(unsigned short **output, unsigned short *input, const int channels, const unsigned long int nsamples){
-	
-	double time_start, time_end;
+void transpose(unsigned short **output, double *time_launch, unsigned short *input, const int channels, const unsigned long int nsamples){
 
+	double time_start, time_end;	
+	
 	size_t output_size = channels*nsamples;
 	*output = (unsigned short *) malloc(output_size*sizeof(unsigned short));
 
 	unsigned long rows_round = floor((float)channels/TR_BLOCK)*TR_BLOCK;
         unsigned long columns_round = floor((float)nsamples/TR_BLOCK)*TR_BLOCK;
 
-//	printf("Row: %lu Col: %lu\n", rows_round, columns_round);
-
 	printf("\n\tTransposition for a block size: %d ...\n", TR_BLOCK);
 	time_start = omp_get_wtime();
 		transpose_block(input,output,nsamples,channels,rows_round,columns_round);
         time_end = omp_get_wtime() - time_start;
 	float thr = 2*output_size*sizeof(unsigned short)/1024.0/1024.0/1024.0/time_end;
-	printf("\t\tdone in: %lf. Bandwidth: %lf GB/s.\n", time_end, thr);
-
+	printf("\t\tdone in: %lf. Bandwidth: %lf GB/s.\n\n", time_end, thr);
+	*time_launch = time_end;
 }

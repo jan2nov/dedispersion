@@ -1,7 +1,7 @@
 // dedispersion settings
 #define NSAMPLES  176
-#define RUNS 1
-#define DIVINDM 375
+#define RUNS 5
+#define DIVINDM 50
 #define DIVINCHAN 64
 
 //transpose settings
