@@ -14,7 +14,9 @@ How to install
 ==============
 It should work the basic way. 
   cmake .
+  
   make
+  
   ----> creates "dedispersion-cpu"
 
 How to launch
