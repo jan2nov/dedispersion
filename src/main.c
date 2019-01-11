@@ -60,6 +60,12 @@ int main(int argc, char *argv[])
 
 	//reduced number of samples by the maxshift in dispersion by the plan and performance optimizations
 	//the NSAMPLES need to be less then total_nsamples - maxshift
+	if (total_nsamples < maxshift) {
+		printf("ERROR: Signal length too low. Please increase the length.\n");
+		printf("Maxshift is: %d samples, signal is lenght of: %lu\n", maxshift, total_nsamples);
+		exit(103);
+	}
+
 	unsigned long int reduced_nsamples = ( (total_nsamples - maxshift)/NSAMPLES*NSAMPLES );
 
 	// check the ndms to be a multiply of DIVINDM
