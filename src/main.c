@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 
 	//uncomment to raw write data
-	write_raw_data(dedispersed_signal, ndms, reduced_nsamples, dm_step, dm_start);
+//	write_raw_data(dedispersed_signal, ndms, reduced_nsamples, dm_step, dm_start);
 	fflush(stdout);
 
 	// end of the code
