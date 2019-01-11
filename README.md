@@ -7,7 +7,7 @@ For now its able to run only one DM plan. The length of the signal is currently 
 The performance changes with changing defined divisions in time_samples, channels, and nsamples (blocking). To find the best one for concrete cpu and signal definitions needs to be autotuned. All these parameters are set in file: "include/params.h".
 
 Now using cilkplus intel array notation extension. 
-Req: gcc => 4.9.2 (for cilkplus)
+Req: gcc => 4.9.2 (for cilkplus).
      Now default intel ICC compiler is set (because the gcc can't very well work with cilkplus vectorization).
 
 How to install
