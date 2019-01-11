@@ -8,6 +8,4 @@
 #define TR_BLOCK 32
 
 //fake signal settings
-#define SIGNAL_TIME 50
-
-
+#define SIGNAL_TIME 10
