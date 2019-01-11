@@ -9,7 +9,7 @@ void transpose_scalar_block(const unsigned short *A, unsigned short *B, const un
     #pragma omp parallel for
     for(int k=0; k < TR_BLOCK; k++) {
         for(int l=0; l< TR_BLOCK; l++) {
-            ( B)[(unsigned long)(l*ldb + k)] = A[(unsigned long)(k*lda + l)];
+          ( B)[(unsigned long)(l*ldb + k)] = A[(unsigned long)(k*lda + l)];
         }
     }
 }
@@ -33,9 +33,11 @@ void transpose(unsigned short **output, unsigned short *input, const int channel
 	unsigned long rows_round = floor((float)channels/TR_BLOCK)*TR_BLOCK;
         unsigned long columns_round = floor((float)nsamples/TR_BLOCK)*TR_BLOCK;
 
+//	printf("Row: %lu Col: %lu\n", rows_round, columns_round);
+
 	printf("\n\tTransposition for a block size: %d ...\n", TR_BLOCK);
 	time_start = omp_get_wtime();
-                transpose_block(input,output,nsamples,channels,rows_round,columns_round);
+		transpose_block(input,output,nsamples,channels,rows_round,columns_round);
         time_end = omp_get_wtime() - time_start;
 	float thr = 2*output_size*sizeof(unsigned short)/1024.0/1024.0/1024.0/time_end;
 	printf("\t\tdone in: %lf. Bandwidth: %lf GB/s.\n", time_end, thr);

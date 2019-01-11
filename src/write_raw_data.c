@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 
-void write_raw_data(float *dedispersed_signal, const int ndms, const int reduced_nsamples){
+void write_raw_data(float *dedispersed_signal, const int ndms, const int reduced_nsamples, const float dm_step, const float dm_start){
 
 	double time_start, time_end;
 
@@ -20,7 +20,7 @@ void write_raw_data(float *dedispersed_signal, const int ndms, const int reduced
 	time_start = omp_get_wtime();
         for (int dm_count = 0; dm_count < ndms; dm_count++) {
                 for(int j = 0; j < reduced_nsamples; j++) {
-                        fprintf(fp_out, "%d %d %.8lf\n", j, dm_count, dedispersed_signal[dm_count*reduced_nsamples + j]);
+                        fprintf(fp_out, "%d %lf %.8lf\n", j, (dm_count*dm_step + dm_start), dedispersed_signal[dm_count*reduced_nsamples + j]);
                 }
         }
 	time_end = omp_get_wtime()-time_start;

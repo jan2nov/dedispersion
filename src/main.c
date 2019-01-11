@@ -17,14 +17,19 @@ int main(int argc, char *argv[])
 	int maximum_width = 10;
 	unsigned short *signal;
 	float selected_dm = 90;
-	float fch1 = 1550.0;
-	float total_bandwidth = 300.0f;
-	float time_sampling = 0.000064f; //0.0625f;
+	float fch1 = atof(argv[1]);
+	int channels = atoi(argv[2]);
+		if (channels < DIVINCHAN) {
+			printf("ERROR: The DIVINDM is bigger than asked # channels\n\n");
+			exit(100);
+		}
+	float total_bandwidth = atof(argv[3]);
+	float time_sampling = atof(argv[4]);
 	int sampling_rate = 1/time_sampling;
-	int channels = 128;
 	float chan_ban = -total_bandwidth/channels;
 	unsigned long int total_nsamples = 0;
 
+	
         // Obtain the channel shifts for concrete channel bandwidth ('chan_ban') and high frequency ('fch1') for #number of channels ('channels')
         // note: the channel bandwidth need to be negative (going from high to low frequencies)
         float *shifts;
@@ -35,9 +40,9 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 
 	// searching plan basic setup
-	int ndms = 100;
-	float dm_step = 1.0;
-	float dm_start = 0.0;
+	int ndms = atoi(argv[5]);;
+	float dm_step = atof(argv[6]);
+	float dm_start = atof(argv[7]);
 	int maxshift = 0;
 	int max_high;
 	
@@ -45,6 +50,7 @@ int main(int argc, char *argv[])
 	if ( (max_high > maxshift) ) maxshift = max_high;
 
 	//reduced number of samples by the maxshift in dispersion by the plan and performance optimizations
+	//the NSAMPLES need to be less then total_nsamples - maxshift
 	unsigned long int reduced_nsamples = ( (total_nsamples - maxshift)/NSAMPLES*NSAMPLES );
 
 	// check the ndms to be a multiply of DIVINDM
@@ -64,6 +70,8 @@ int main(int argc, char *argv[])
 	printf("\tDMs computed per block:      \t%*d\n"   , maximum_width, DIVINDM);
 	printf("\tMaxshift for the plan:       \t%*d\n"   , maximum_width, maxshift);
 	printf("\tComputing # of dm trials     \t%*d\n"   , maximum_width, ndms);
+	printf("\tDM step is set to            \t%*lf\n"   , maximum_width, dm_step);
+	printf("\tStart search from dm:        \t%*lf\n"   , maximum_width, dm_start);
 	printf("\tTotal number of samples:     \t%*lu\n"  , maximum_width, total_nsamples);
 	printf("\tReduced number of samples:   \t%*lu\n"  , maximum_width, reduced_nsamples);
         printf("\tSize of the input signal:    \t%*f GB\n", maximum_width, (float)(channels*total_nsamples*sizeof(unsigned short)/1024.0/1024.0/1024.0));
@@ -73,24 +81,13 @@ int main(int argc, char *argv[])
 
 	// tranpose the signal
 	unsigned short *transposed_signal;
+
 	transpose(&transposed_signal, signal, channels, total_nsamples);	
 	fflush(stdout);
 
-//        for (int i = 0; i < (int)total_nsamples; i++){
-//                for (int j = 0; j < channels; j++){
-//                        printf("%hu ",signal[i*channels + j]);
-//                }
-//                printf("\n");
-//        }
-//
-//	printf("\n");
-//        for (int i = 0; i < (int)channels; i++){
-//                for (int j = 0; j < (int)total_nsamples; j++){
-//                        printf("%hu ",transposed_signal[i*total_nsamples + j]);
-//                }
-//                printf("\n");
-//        }
+	dedispersion_cpu(transposed_signal, dedispersed_signal, sampling_rate, channels, reduced_nsamples, ndms, shifts, dm_step, total_nsamples, dm_start);
 
+	// Launching de-dispersion kernel
 	printf("\n\tLaunching dedispersion for range: %d ...\n", 0);
 	time_start = omp_get_wtime();
 		dedispersion_cpu(transposed_signal, dedispersed_signal, sampling_rate, channels, reduced_nsamples, ndms, shifts, dm_step, total_nsamples, dm_start);
@@ -98,13 +95,16 @@ int main(int argc, char *argv[])
 	printf("\t\tdone in: %lf s. Fraction of real-time: %lf\n\n", time_end, reduced_nsamples/(sampling_rate*time_end));
 	fflush(stdout);
 
-	write_raw_data(dedispersed_signal, ndms, reduced_nsamples);
+	//uncomment to raw write data
+	//write_raw_data(dedispersed_signal, ndms, reduced_nsamples, dm_step, dm_start);
 	fflush(stdout);
 
+	// end of the code
         printf("\n\t**********************************\n");
         printf( "\t        #That's all folks!        \n");
         printf( "\t**********************************\n");
 
+	//clean-up
 	free(shifts);
 	free(signal);
 	free(transposed_signal);
