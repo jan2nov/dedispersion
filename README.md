@@ -13,15 +13,15 @@ Req: gcc => 4.9.2 (for cilkplus).
 How to install
 ==============
 It should work the basic way.  
-  cmake .    
-  make    
-  ----> creates "dedispersion-cpu"
+  > cmake .    
+  > make    
+  > ----> creates "dedispersion-cpu"
 
 How to launch
 =============
 The executable "dedispersion-cpu" needs 8 arguments:
 
-  example to launch:  
-    ./dedispersion-cpu 1550 128 300 0.000064 90.0 150 1 0.0
+  > example to launch:  
+  >  ./dedispersion-cpu 1550 128 300 0.000064 90.0 150 1 0.0
     
 ./dedispersion-cpu [high_frequency] [channels] [total_bandwidth] [time_sampling(in seconds)] [signal_dm_position] [#dm] [dm_step dm_start]
