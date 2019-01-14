@@ -9,6 +9,7 @@
 #include "params.h"
 #include "transpose.h"
 #include "write_raw_data.h"
+#include "write_results.h"
 
 int main(int argc, char *argv[])
 {
@@ -121,6 +122,9 @@ int main(int argc, char *argv[])
 	//uncomment to raw write data
 //	write_raw_data(dedispersed_signal, ndms, reduced_nsamples, dm_step, dm_start);
 	fflush(stdout);
+
+	//write results to file
+	write_results(channels, ndms, fch1, total_bandwidth, selected_dm, time_sampling, reduced_nsamples, time_dedisp, time_trans);
 
 	// end of the code
         printf("\n\t**********************************\n");

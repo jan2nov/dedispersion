@@ -1,0 +1,1 @@
+void write_results(const int channels, const int ndms, const float fch1, const float total_bandwidth, const float selected_dm, const float time_sampling, const unsigned long int reduced_nsamples, const double time_dedisp, const double time_trans);
