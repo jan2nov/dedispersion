@@ -10,8 +10,8 @@ do
 	echo "// dedispersion settings" > ./include/params.h
 	echo "#define NSAMPLES  $nsamples" >>  ./include/params.h
 	echo "#define RUNS 5" >>  ./include/params.h
-	echo "#define DIVINDM 2" >>  ./include/params.h
-	echo "#define DIVINCHAN 2" >>  ./include/params.h
+	echo "#define DIVINDM $idms" >>  ./include/params.h
+	echo "#define DIVINCHAN $ichan" >>  ./include/params.h
 	echo "//transpose settings" >>  ./include/params.h
 	echo "#define TR_BLOCK 32" >>  ./include/params.h
 	echo "//fake signal settings" >>  ./include/params.h
