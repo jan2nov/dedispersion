@@ -14,7 +14,15 @@ include_directories(include/)
 #list(APPEND CMAKE_C_FLAGS "-std=c99 -O3 -Wall -Wpedantic -Wextra -fopenmp -fcilkplus -mavx512f -mavx512cd -mavx512er -mavx512pf -march=knl -ffast-math -mfma -malign-data=cacheline -finline-functions -lm")
 
 # update for AMD EPYC
-list(APPEND CMAKE_C_FLAGS "-std=c99 -O2 -Wall -Wextra -qopenmp -march=core-avx2 -qopt-prefetch -fma -ftz -fomit-frame-pointer -finline-functions -lm")
+#list(APPEND CMAKE_C_FLAGS "-std=c99 -O2 -Wall -Wextra -qopenmp -march=core-avx2 -qopt-prefetch -fma -ftz -fomit-frame-pointer -finline-functions -qopt-streaming-stores=never")
+list(APPEND CMAKE_C_FLAGS "-std=c99 -O3 -Wall -Wextra -qopenmp -march=core-avx2 -fma -ftz -fomit-frame-pointer -finline-functions -qopt-streaming-stores=never -ffast-math")
+#list(APPEND CMAKE_C_FLAGS "-std=c99 -O2 -Wall -Wextra -march=broadwell -qopenmp -qopt-prefetch -fma -ftz -fomit-frame-pointer -finline-functions -qopt-streaming-stores=never")
+
+#AMD EPYC for gcc
+#list(APPEND CMAKE_C_FLAGS "-std=c99 -O3 -Wall -Wextra -march=znver1 -mtune=znver1 -mfma -mavx2 -m3dnow -fopenmp -ffast-math -ftree-vectorize -fprefetch-loop-arrays -mprefetchwt1")
+
+#AMD clang
+#list(APPEND CMAKE_C_FLAGS "-std=c99 -O2 -Wall -Wextra -march=znver1 -fvectorize -mfma -mavx2 -m3dnow -fuse-ld=lld -fopenmp -fcilkplus")
 
 #Flags for Knights Landing in case of use intel ICC
 #list(APPEND CMAKE_C_FLAGS "-qopenmp -g -fp-model fast=2 -std=c99 -O2 -fma -xMIC-AVX512 -align -finline-functions -no-prec-div -ipo -DOPEMP_SPEC -qopt-streaming-stores=never")

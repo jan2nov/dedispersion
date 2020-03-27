@@ -1,0 +1,1 @@
+awk '{print $13 " "$1 " "$2 " "$3 " "$12}' time-results.dat | sort -g | tail -n 20
