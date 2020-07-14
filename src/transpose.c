@@ -28,7 +28,8 @@ void transpose(unsigned short **output, double *time_launch, unsigned short *inp
 	double time_start, time_end;	
 	
 	size_t output_size = channels*nsamples;
-	*output = (unsigned short *) malloc(output_size*sizeof(unsigned short));
+//	*output = (unsigned short *) malloc(output_size*sizeof(unsigned short));
+	*output = (unsigned short *) _mm_malloc(output_size*sizeof(unsigned short), 64);
 
 	unsigned long rows_round = floor((float)channels/TR_BLOCK)*TR_BLOCK;
         unsigned long columns_round = floor((float)nsamples/TR_BLOCK)*TR_BLOCK;
