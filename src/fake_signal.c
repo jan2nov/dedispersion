@@ -62,7 +62,7 @@ void fake_signal(unsigned short **signal, unsigned long int *nsamples, const flo
                 signal_length = signal_length_time*sampling_rate + signal_time_position + shifts_index[channels - 1];
         }
 	signal_length = (signal_length + TR_BLOCK )/TR_BLOCK*TR_BLOCK; // the transpose kernel needs signal to be multiple of the tr_block
-	size_t signal_size = signal_length*channels;
+	size_t signal_size = (size_t)signal_length*(size_t)channels;
 	*nsamples = signal_length;
 	*signal = (unsigned short *) malloc(signal_size*sizeof(unsigned short));
 	

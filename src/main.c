@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
 
 	float *dedispersed_signal;
 	size_t dedispersed_signal_length = ndms*reduced_nsamples;
-	dedispersed_signal = (float *) malloc(dedispersed_signal_length*sizeof(float));
+	dedispersed_signal = (float *) _mm_malloc(dedispersed_signal_length*sizeof(float),64);
 
 	//print basic info of the signal
 	printf("\t**********************************************\n");
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
 	double time_trans = 0;
 	transpose(&transposed_signal, &time_trans, signal, channels, total_nsamples);	
 	fflush(stdout);
-
+//	return 0;
 	//write transposed signal to disk; just for debugging
 //	signal_raw_data(signal, total_nsamples, channels);
 
@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
 	free(shifts);
 	free(signal);
 	free(transposed_signal);
-	free(dedispersed_signal);
+	_mm_free(dedispersed_signal);
 
 	return 0;
 }
