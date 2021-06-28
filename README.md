@@ -9,6 +9,7 @@ The performance changes with changing defined divisions in time_samples, channel
 Now using cilkplus intel array notation extension. 
 Req: gcc => 4.9.2 (for cilkplus).
      Now default intel ICC compiler is set (because the gcc can't very well work with cilkplus vectorization).
+     GSL library for adding noise
 
 How to install
 ==============
@@ -22,6 +23,6 @@ How to launch
 The executable "dedispersion-cpu" needs 8 arguments:
 
   > example to launch:  
-  >  ./dedispersion-cpu 1550 128 300 0.000064 90.0 150 1 0.0
+  >  ./dedispersion-cpu 1550 128 300 0.000064 90.0 150 1 0.0 1
     
-./dedispersion-cpu [high_frequency] [channels] [total_bandwidth] [time_sampling(in seconds)] [signal_dm_position] [#dm] [dm_step dm_start]
+./dedispersion-cpu [high_frequency] [channels] [total_bandwidth] [time_sampling(in seconds)] [signal_dm_position] [#dm] [dm_step dm_start] [number_of_bandpass]

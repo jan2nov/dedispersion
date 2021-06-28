@@ -11,10 +11,12 @@
 #include "write_raw_data.h"
 #include "write_results.h"
 
+#include <gsl/gsl_rng.h>
+
 int main(int argc, char *argv[])
 {
 
-	if( argc < 9){
+	if( argc < 10){
 		printf("ERROR: Need more arguments, please see the README.md\n\n");
 		exit(100);
 	}
@@ -22,7 +24,8 @@ int main(int argc, char *argv[])
 	
 	double time_start, time_end;
 	int maximum_width = 10;
-	unsigned short *signal;
+	double *signal;
+//	unsigned short *signal;
 	float selected_dm = atof(argv[5]);
 	float fch1 = atof(argv[1]);
 	int channels = atoi(argv[2]);
@@ -35,19 +38,43 @@ int main(int argc, char *argv[])
 	int sampling_rate = 1/time_sampling;
 	float chan_ban = -total_bandwidth/channels;
 	unsigned long int total_nsamples = 0;
+	unsigned int number_of_bandpass = atoi(argv[9]);
+	if ( (number_of_bandpass < 1) || (number_of_bandpass > channels)) {
+		printf("ERROR: The number of bandpass must be bigger than 1 and lower than the number of channels.\n\n");
+		exit(101);
+	}
 
 	
         // Obtain the channel shifts for concrete channel bandwidth ('chan_ban') and high frequency ('fch1') for #number of channels ('channels')
         // note: the channel bandwidth need to be negative (going from high to low frequencies)
         float *shifts;
+	double pwrSignal = 0.0;
         shifts = (float*) malloc(channels*sizeof(float));
         get_shifts(shifts, fch1, chan_ban, channels);
 
-	fake_signal(&signal, &total_nsamples, shifts, selected_dm, fch1, channels, total_bandwidth, time_sampling);
+	fake_signal(&signal, &total_nsamples, &pwrSignal, shifts, selected_dm, fch1, channels, total_bandwidth, time_sampling);
+//	fake_signal_us(&signal, &total_nsamples, &pwrSignal, shifts, selected_dm, fch1, channels, total_bandwidth, time_sampling);
 	fflush(stdout);
 
+	// create noise for adding to the signal
+	double *noise_signal;
+	double pwrNoise = 0.0;
+	if (ADD_NOISE){
+		noise_background(&noise_signal, &pwrNoise, total_nsamples, channels);
+		add_noise(&signal, noise_signal, pwrSignal, pwrNoise, DEFINED_SNR, total_nsamples, channels);
+	}
+	fflush(stdout);
+
+	unsigned short *rescaled_signal;
+	rescale_signal(&rescaled_signal, signal, total_nsamples, channels);
+
+
 	//write signal to disk
-//	signal_raw_data(signal, total_nsamples, channels);
+	signal_raw_data(rescaled_signal, total_nsamples, channels);
+	//write noise to disk
+	if (ADD_NOISE){
+		signal_raw_noise(noise_signal, total_nsamples, channels);
+	}
 
 	// searching plan basic setup
 	int ndms = atoi(argv[6]);;
@@ -74,7 +101,7 @@ int main(int argc, char *argv[])
 
 
 	float *dedispersed_signal;
-	size_t dedispersed_signal_length = ndms*reduced_nsamples;
+	size_t dedispersed_signal_length = ndms*reduced_nsamples*number_of_bandpass;
 	dedispersed_signal = (float *) _mm_malloc(dedispersed_signal_length*sizeof(float),64);
 
 	//print basic info of the signal
@@ -92,6 +119,12 @@ int main(int argc, char *argv[])
 	printf("\tReduced number of samples:   \t%*lu\n"  , maximum_width, reduced_nsamples);
         printf("\tSize of the input signal:    \t%*f GB\n", maximum_width, (float)(channels*total_nsamples*sizeof(unsigned short)/1024.0/1024.0/1024.0));
         printf("\tSize of the output:          \t%*f GB\n", maximum_width, (float)(dedispersed_signal_length*sizeof(float)/1024.0/1024.0/1024.0));
+	printf("\tNumber of dividing channels  \t%*d\n"   , maximum_width, number_of_bandpass);
+	if (ADD_NOISE){
+	printf("\tPower signal is:             \t%*lf\n", maximum_width, pwrSignal);
+	printf("\tPower noise is:              \t%*lf\n", maximum_width, pwrNoise);
+	printf("\tDesired signal to noise ratio\t%*.2lf\n", maximum_width, DEFINED_SNR); 
+	}
         printf("\t**********************************************\n");
 	fflush(stdout);
 
@@ -99,29 +132,47 @@ int main(int argc, char *argv[])
 	unsigned short *transposed_signal;
 	
 	double time_trans = 0;
-	transpose(&transposed_signal, &time_trans, signal, channels, total_nsamples);	
+	transpose(&transposed_signal, &time_trans, rescaled_signal, channels, total_nsamples);	
 	fflush(stdout);
-//	return 0;
 	//write transposed signal to disk; just for debugging
-//	signal_raw_data(signal, total_nsamples, channels);
+//	signal_raw_data(transposed_signal, total_nsamples, channels);
 
 	// Launching de-dispersion kernel
 	double time_dedisp = 0;
 	printf("\tLaunching %dx dedispersion for range: %d ...\n", RUNS,0);
 	for (int i = 0; i < RUNS; i++){
 		time_start = omp_get_wtime();
-			dedispersion_cpu(transposed_signal, dedispersed_signal, sampling_rate, channels, reduced_nsamples, ndms, shifts, dm_step, total_nsamples, dm_start);
+//			dedispersion_cpu(transposed_signal, dedispersed_signal, sampling_rate, channels, reduced_nsamples, ndms, shifts, dm_step, total_nsamples, dm_start);
+			dedispersion_cpu_band(transposed_signal, dedispersed_signal, sampling_rate, channels, reduced_nsamples, ndms, shifts, dm_step, total_nsamples, dm_start, number_of_bandpass);
 		time_end = omp_get_wtime() - time_start;
 		time_dedisp += time_end;
 		printf("\t\t\t#%d: %lf seconds\n", i, time_end);
 	}
 	time_dedisp = time_dedisp/RUNS;
-	printf("\t\tdone in average: %lf s. Fraction of real-time: %lf\n\n", time_dedisp, reduced_nsamples/(sampling_rate*time_dedisp));
+	printf("\t\tdone in average: %lf s. Fraction of real-time: %lf\n", time_dedisp, reduced_nsamples/(sampling_rate*time_dedisp));
+	printf("\t\tGFLOPS: %lf.\n\n", (reduced_nsamples*channels*ndms)/time_dedisp/1e9);
 	fflush(stdout);
 
 	//uncomment to raw write data
-//	write_raw_data(dedispersed_signal, ndms, reduced_nsamples, dm_step, dm_start);
+	write_raw_data(dedispersed_signal, ndms, reduced_nsamples, dm_step, dm_start, number_of_bandpass);
 	fflush(stdout);
+
+	write_spd(dedispersed_signal, ndms, reduced_nsamples, dm_step, dm_start, number_of_bandpass);
+
+	//std 
+	
+	double total = 0.0;
+	double mean = 0.0;
+	double stddev = 0.0;
+	for (int c = 0; c < reduced_nsamples*ndms*number_of_bandpass;c++)
+		total+=dedispersed_signal[c];
+	mean = total/(reduced_nsamples*ndms*number_of_bandpass);
+	total = 0.0;
+	#pragma omp parallel for reduction(+:total)
+	for(int j = 0; j < ndms*reduced_nsamples*number_of_bandpass; j++)
+		total += (double)((dedispersed_signal[j] - mean)*(dedispersed_signal[j] - mean));
+	stddev = (double)sqrt(total / (double)(ndms*reduced_nsamples*number_of_bandpass));
+	printf("\tDedispersed signal sum: %lf, mean: %lf and stddev: %lf\n", total, mean, stddev);
 
 	//write results to file
 	write_results(channels, ndms, fch1, total_bandwidth, selected_dm, time_sampling, reduced_nsamples, time_dedisp, time_trans);
@@ -134,8 +185,12 @@ int main(int argc, char *argv[])
 	//clean-up
 	free(shifts);
 	free(signal);
+//	free(rescaled_signal);
 	free(transposed_signal);
 	_mm_free(dedispersed_signal);
+	if (ADD_NOISE){
+		free(noise_signal);
+	}
 
 	return 0;
 }

@@ -7,11 +7,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <omp.h>
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
+#include <math.h>
 
 
 #define MAX 255
 
-void fake_signal(unsigned short **signal, unsigned long int *nsamples, const float *shifts, const float selected_dm, const float fch1, const int channels, const float total_bandwidth, const float time_sampling)
+void fake_signal(double **signal, unsigned long int *nsamples, double *pwrSignal, const float *shifts, const float selected_dm, const float fch1, const int channels, const float total_bandwidth, const float time_sampling)
 {
 	int maximum_width = 10;
 	//time measurement
@@ -64,21 +67,107 @@ void fake_signal(unsigned short **signal, unsigned long int *nsamples, const flo
 	signal_length = (signal_length + TR_BLOCK )/TR_BLOCK*TR_BLOCK; // the transpose kernel needs signal to be multiple of the tr_block
 	size_t signal_size = (size_t)signal_length*(size_t)channels;
 	*nsamples = signal_length;
-	*signal = (unsigned short *) malloc(signal_size*sizeof(unsigned short));
+	*signal = (double *) malloc(signal_size*sizeof(double));
 	
 	printf("\tGenerating fake signal with %d samples (%lf s) ...", signal_length,(float)signal_length/sampling_rate);
 	time_start = omp_get_wtime();
-	memset(*signal, 0, signal_size*sizeof(unsigned short));
+	memset(*signal, 0, signal_size*sizeof(double));
+	double sum_total = 0.0;
 	for (int i = 0; i < func_length; i++){
 		int time_pos = (i - max_pos + signal_time_position)*channels; // inverse gauss case
 		for(int j = 0; j < channels; j++){
-			(*signal)[j + channels*shifts_index[j] + time_pos] = func_scale[i]*MAX;
+			(*signal)[j + channels*shifts_index[j] + time_pos] = func_scale[i]; //round(func_scale[i]*MAX);
+			sum_total += func_scale[i]*func_scale[i]; //(round(func_scale[i]*MAX));
 		}	
 	}
 	time_end = omp_get_wtime() - time_start;
 	printf("\n\t\tdone in %lf seconds.\n\n",time_end);
 
+	*pwrSignal = (sum_total);//signal_size; 
+
 	//clean-up
 	free(func_scale);
 	free(shifts_index);
+}
+
+void noise_background(double **noise_signal, double *pwrNoise, unsigned long int nsamples, const int nchans){
+	double time_start, time_end;
+	size_t noise_size = (size_t)(nsamples)*(size_t)(nchans);
+	*noise_signal = (double *) malloc(noise_size*sizeof(double));
+
+	//----------------> GSL stuff 
+	const gsl_rng_type *rndType;
+	gsl_rng *rnd_handle;
+	gsl_rng_env_setup();
+	//long int seed=(long int) time(NULL);
+	long int seed=(long int) 1;
+	rndType = gsl_rng_default;
+	rnd_handle = gsl_rng_alloc(rndType);
+	gsl_rng_set(rnd_handle,seed);
+	//----------------> GSL stuff 
+	
+	double sum_total = 0.0;
+	double temp; 
+	printf("\tGenerating noise ...");
+//////////////
+	time_start = omp_get_wtime();
+	for (size_t i = 0; i < noise_size; i++){
+		temp = gsl_ran_gaussian(rnd_handle, 3.0);
+		(*noise_signal)[i] = temp;
+		sum_total+= temp*temp;
+	}
+	time_end = omp_get_wtime() - time_start;
+//////////////
+	printf("\n\t\tdone in %lf seconds.\n",time_end);
+
+	//noise power
+	*pwrNoise = 0.0;
+	*pwrNoise = (sum_total);///noise_size; 
+	printf("sum_total: %lf noise_size: %zu", sum_total, noise_size);
+
+	gsl_rng_free(rnd_handle);
+}
+
+
+void add_noise(double **signal, double *noise_signal, double pwrSignal, double pwrNoise, float DESIRED_SNR, unsigned long int total_nsamples, const int channels){
+	printf("\tAdding noise to the signal");
+
+	double alpha = sqrt(pwrSignal/(DESIRED_SNR*pwrNoise));
+	printf("\talpha: %lf\n", alpha);
+	for(int i = 0; i < total_nsamples; i++){
+		for(int j = 0; j < channels; j++){
+			(*signal)[i*channels + j] += alpha*noise_signal[i*channels + j];
+		}
+	}
+	printf("\n\t\tdone.\n");
+}
+
+void rescale_signal(unsigned short **rescaled_signal, double *signal, unsigned long int nsamples, const int channels){
+	double maximum = -1.0;
+	double minimum = signal[0];
+
+	size_t signal_size = (size_t)nsamples*(size_t)channels;
+	*rescaled_signal = (unsigned short *) malloc(signal_size*sizeof(unsigned short));
+	memset(*rescaled_signal, 0, signal_size*sizeof(unsigned short));
+
+	printf("\tRescale the signal\n");
+	for (int i = 0; i < channels; i++){
+		for (int j = 0; j < nsamples; j++){
+			double temp = signal[j*channels + i];
+			if (maximum < temp){
+				maximum = temp;
+			}
+			if (minimum > temp){
+				minimum = temp;
+			}
+		}
+	}
+	double diff = maximum - minimum;
+	printf("\t\tOriginal Min: %lf Original Max: %lf Diff %lf\n", minimum, maximum, diff);
+	//min-max rescaling to obtain (0,MAX)
+	for (size_t i = 0; i < (channels*nsamples); i++){
+		double temp = signal[i];
+		(*rescaled_signal)[i] = round(((temp - minimum)/diff)*MAX);
+	}
+	printf("\t... done.\n");
 }

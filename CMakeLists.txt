@@ -33,7 +33,7 @@ set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
 #list(APPEND CMAKE_C_FLAGS "-std=c99 -O3 -Wall -Wpedantic -Wextra -fopenmp -fcilkplus -ffast-math -lm")
 
 #Generic flags for ICC compiler
-list(APPEND CMAKE_C_FLAGS "-qopenmp -g -fp-model fast=2 -std=c99 -O2 -march=core-avx2 -fma -align -finline-functions -no-prec-div -ipo -DOPEMP_SPEC -qopt-streaming-stores=never")
+list(APPEND CMAKE_C_FLAGS "-qopenmp -g -fp-model fast=2 -std=c99 -O2 -march=core-avx2 -fma -align -finline-functions -no-prec-div -ipo -DOPEMP_SPEC -qopt-streaming-stores=never -lgsl -lgslcblas")
 
 if(DEFINED NSAMPLES)
 	string(APPEND CMAKE_C_FLAGS " -DNSAMPLES=${NSAMPLES}")
