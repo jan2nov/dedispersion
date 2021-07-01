@@ -2,6 +2,7 @@
 #include <omp.h>
 #include <stdlib.h>
 #include <math.h>
+#include "msd.h"
 
 
 void write_raw_data(float *dedispersed_signal, const int ndms, const unsigned long int reduced_nsamples, const float dm_step, const float dm_start, unsigned int band){
@@ -38,19 +39,9 @@ void write_spd(float *dedispersed_signal, const int ndms, const unsigned long in
 
 	double mean = 0.0;
 	size_t samples = ndms*nsamples*band;
-
-	#pragma omp parallel for reduction(+:mean) schedule(auto)
-	for (size_t i = 0; i < samples; i++){
-		mean += dedispersed_signal[i];
-	}
-	mean /= samples;
-
 	double stddev = 0.0;
-	#pragma omp parallel for reduction(+:stddev) schedule(auto)
-	for (size_t i = 0; i < samples; i++){
-		stddev += (double)((dedispersed_signal[i] - mean)*(dedispersed_signal[i] - mean));
-	}
-	stddev = sqrt(stddev/samples);
+	
+	msd_parallel_basic(samples, dedispersed_signal, &mean, &stddev);
 	printf("\tDedispersed signal statistics ---> mean: %lf, std: %lf\n", mean, stddev);
 
 	FILE *fp_out;

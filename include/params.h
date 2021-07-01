@@ -18,5 +18,5 @@
 #endif
 
 #ifndef DEFINED_SNR
-	#define DEFINED_SNR 3.0
+	#define DEFINED_SNR 0.0001
 #endif

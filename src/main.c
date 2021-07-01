@@ -10,6 +10,7 @@
 #include "transpose.h"
 #include "write_raw_data.h"
 #include "write_results.h"
+#include "msd.h"
 
 #include <gsl/gsl_rng.h>
 
@@ -161,18 +162,10 @@ int main(int argc, char *argv[])
 
 	//std 
 	
-	double total = 0.0;
-	double mean = 0.0;
-	double stddev = 0.0;
-	for (int c = 0; c < reduced_nsamples*ndms*number_of_bandpass;c++)
-		total+=dedispersed_signal[c];
-	mean = total/(reduced_nsamples*ndms*number_of_bandpass);
-	total = 0.0;
-	#pragma omp parallel for reduction(+:total)
-	for(int j = 0; j < ndms*reduced_nsamples*number_of_bandpass; j++)
-		total += (double)((dedispersed_signal[j] - mean)*(dedispersed_signal[j] - mean));
-	stddev = (double)sqrt(total / (double)(ndms*reduced_nsamples*number_of_bandpass));
-	printf("\tDedispersed signal sum: %lf, mean: %lf and stddev: %lf\n", total, mean, stddev);
+//	double mean = 0.0;
+//	double stddev = 0.0;
+//	msd_parallel_basic((size_t)(reduced_nsamples*ndms*number_of_bandpass), dedispersed_signal, &mean, &stddev);
+//	printf("\tDedispersed signal mean: %lf and stddev: %lf\n", mean, stddev);
 
 	//write results to file
 	write_results(channels, ndms, fch1, total_bandwidth, selected_dm, time_sampling, reduced_nsamples, time_dedisp, time_trans);
@@ -185,7 +178,7 @@ int main(int argc, char *argv[])
 	//clean-up
 	free(shifts);
 	free(signal);
-//	free(rescaled_signal);
+	free(rescaled_signal);
 	free(transposed_signal);
 	_mm_free(dedispersed_signal);
 	if (ADD_NOISE){

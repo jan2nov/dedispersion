@@ -10,7 +10,7 @@
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
 #include <math.h>
-
+#include "msd.h"
 
 #define MAX 255
 
@@ -81,7 +81,11 @@ void fake_signal(double **signal, unsigned long int *nsamples, double *pwrSignal
 		}	
 	}
 	time_end = omp_get_wtime() - time_start;
-	printf("\n\t\tdone in %lf seconds.\n\n",time_end);
+	printf("\n\t\tdone in %lf seconds.\n",time_end);
+	double mean = 0.0;
+	double sd = 0.0;
+	msd_parallel_basic_double(signal_size, *signal, &mean, &sd);
+	printf("\tNote: fake signal mean %lf std: %lf %zu.\n\n",mean, sd, signal_size);
 
 	*pwrSignal = (sum_total);//signal_size; 
 
@@ -118,12 +122,12 @@ void noise_background(double **noise_signal, double *pwrNoise, unsigned long int
 	}
 	time_end = omp_get_wtime() - time_start;
 //////////////
-	printf("\n\t\tdone in %lf seconds.\n",time_end);
+	printf("\n\t\tdone in %lf seconds.\n\n",time_end);
 
 	//noise power
 	*pwrNoise = 0.0;
 	*pwrNoise = (sum_total);///noise_size; 
-	printf("sum_total: %lf noise_size: %zu", sum_total, noise_size);
+//	printf("sum_total: %lf noise_size: %zu", sum_total, noise_size);
 
 	gsl_rng_free(rnd_handle);
 }
@@ -139,7 +143,7 @@ void add_noise(double **signal, double *noise_signal, double pwrSignal, double p
 			(*signal)[i*channels + j] += alpha*noise_signal[i*channels + j];
 		}
 	}
-	printf("\n\t\tdone.\n");
+	printf("\t\tdone.\n\n");
 }
 
 void rescale_signal(unsigned short **rescaled_signal, double *signal, unsigned long int nsamples, const int channels){
@@ -148,7 +152,10 @@ void rescale_signal(unsigned short **rescaled_signal, double *signal, unsigned l
 
 	size_t signal_size = (size_t)nsamples*(size_t)channels;
 	*rescaled_signal = (unsigned short *) malloc(signal_size*sizeof(unsigned short));
+	double *rescaled_signal_double;
+	rescaled_signal_double = (double *) malloc(signal_size*sizeof(double));
 	memset(*rescaled_signal, 0, signal_size*sizeof(unsigned short));
+	memset(rescaled_signal_double, 0.0, signal_size*sizeof(double));
 
 	printf("\tRescale the signal\n");
 	for (int i = 0; i < channels; i++){
@@ -167,7 +174,28 @@ void rescale_signal(unsigned short **rescaled_signal, double *signal, unsigned l
 	//min-max rescaling to obtain (0,MAX)
 	for (size_t i = 0; i < (channels*nsamples); i++){
 		double temp = signal[i];
-		(*rescaled_signal)[i] = round(((temp - minimum)/diff)*MAX);
+//		(*rescaled_signal)[i] = round(((temp - minimum)/diff)*MAX);
+		rescaled_signal_double[i] = ((temp - minimum)/diff)*MAX;
 	}
-	printf("\t... done.\n");
+	printf("\t\tdone.\n\n");
+
+	double mean = 0.0;
+	double sd = 0.0;
+	double temp_value;
+	msd_parallel_basic_double(signal_size, rescaled_signal_double, &mean, &sd);
+	printf("\tNote: rescaled signal mean %lf std: %lf.\n\n",mean, sd);
+	for (size_t i = 0; i < (channels*nsamples); i++){
+		double temp = signal[i];
+//		(*rescaled_signal)[i] = round(((temp - minimum)/diff)*MAX);
+		temp_value = (rescaled_signal_double[i] - mean)/sd + 127.5; //(rescaled_signal_double[i] + (127.5 - mean))/sd; 
+		if (temp_value >= 255) 
+			(*rescaled_signal)[i] = 255;
+		else {
+			(*rescaled_signal)[i] = round(temp_value);
+		}
+	}
+	msd_parallel_char(signal_size, *rescaled_signal, &mean, &sd);
+	printf("\tNote: rescaled signal mean %lf std: %lf.\n\n",mean, sd);
+
+	free(rescaled_signal_double);
 }
