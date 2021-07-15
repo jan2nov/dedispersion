@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <omp.h>
 #include <math.h>
+#include <string.h>
 #include "fake_signal.h"
 #include "shifts.h"
 #include "dedispersion.h"
@@ -11,6 +12,7 @@
 #include "write_raw_data.h"
 #include "write_results.h"
 #include "msd.h"
+#include "band_functions.h"
 
 #include <gsl/gsl_rng.h>
 
@@ -31,7 +33,7 @@ int main(int argc, char *argv[])
 	float fch1 = atof(argv[1]);
 	int channels = atoi(argv[2]);
 		if (channels < DIVINCHAN) {
-			printf("ERROR: The DIVINDM is bigger than asked # channels\n\n");
+			printf("ERROR: The DIVINCHAN is bigger than asked # channels\n\n");
 			exit(100);
 		}
 	float total_bandwidth = atof(argv[3]);
@@ -40,6 +42,7 @@ int main(int argc, char *argv[])
 	float chan_ban = -total_bandwidth/channels;
 	unsigned long int total_nsamples = 0;
 	unsigned int number_of_bandpass = atoi(argv[9]);
+	unsigned int chan_per_band = channels/number_of_bandpass;
 	if ( (number_of_bandpass < 1) || (number_of_bandpass > channels)) {
 		printf("ERROR: The number of bandpass must be bigger than 1 and lower than the number of channels.\n\n");
 		exit(101);
@@ -153,7 +156,40 @@ int main(int argc, char *argv[])
 	printf("\t\tdone in average: %lf s. Fraction of real-time: %lf\n", time_dedisp, reduced_nsamples/(sampling_rate*time_dedisp));
 	printf("\t\tGFLOPS: %lf.\n\n", (reduced_nsamples*channels*ndms)/time_dedisp/1e9);
 	fflush(stdout);
-
+	
+	// Calculating mean and standard deviation for different combinations of bands
+	// data to store MSD
+	double *mean, *stdev;
+	mean = (double*) malloc(number_of_bandpass*sizeof(double));
+	stdev = (double*) malloc(number_of_bandpass*sizeof(double));
+	float *temporary;
+	temporary = (float *) _mm_malloc(reduced_nsamples*ndms*sizeof(float),64);
+	
+	#pragma omp parallel for
+	for(int f=0; f<ndms; f++){
+		memcpy(&temporary[f*reduced_nsamples], &dedispersed_signal[f*reduced_nsamples], reduced_nsamples*sizeof(float));
+	}
+	
+	size_t nElements = reduced_nsamples*ndms;
+	msd_parallel_basic(nElements, temporary, &mean[0], &stdev[0]);
+	printf("f=0; mean=%e; stdev=%e;\n", mean[0], stdev[0]);
+	for(int f=1; f<number_of_bandpass; f++){
+		SumBands(temporary, &dedispersed_signal[f*nElements], nElements);
+		msd_parallel_basic(nElements, temporary, &mean[f], &stdev[f]);
+		printf("f=%d; mean=%e; stdev=%e;\n", f, mean[f], stdev[f]);
+	}
+	
+	// Finding maximum SNR
+	int *nSums;
+	nSums = (int *) _mm_malloc(reduced_nsamples*ndms*sizeof(int),64);
+	for(size_t f=0; f<nElements; f++){
+		nSums[f] = 0;
+	}
+	
+	
+	// normalization
+	NormalizeBand(temporary, nSums, mean, stdev, reduced_nsamples, ndms);
+	
 	//uncomment to raw write data
 	write_raw_data(dedispersed_signal, ndms, reduced_nsamples, dm_step, dm_start, number_of_bandpass);
 	fflush(stdout);
@@ -181,6 +217,10 @@ int main(int argc, char *argv[])
 	free(rescaled_signal);
 	free(transposed_signal);
 	_mm_free(dedispersed_signal);
+	_mm_free(temporary);
+	_mm_free(nSums);
+	free(mean);
+	free(stdev);
 	if (ADD_NOISE){
 		free(noise_signal);
 	}
